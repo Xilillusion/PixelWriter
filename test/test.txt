@@ -1,0 +1,17 @@
+ASCII CHARACTER SET TEST
+
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+abcdefghijklmnopqrstuvwxyz
+0123456789
+
+!"#$%&'()*+,-./
+:;<=>?@[\]^_`
+{|}~
+
+The quick brown fox jumps over the lazy dog.
+THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.
+Pack my box with five dozen liquor jugs.
+
+0123456789  ABCDEFGHIJKLMNOPQRSTUVWXYZ
+abcdefghijklmnopqrstuvwxyz  !@#$%^&*()_+-=
+[]{};:'",.<>/?\|`~

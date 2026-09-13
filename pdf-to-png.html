@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PixelWriter · PDF to PNG</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #172033; background: #eef3f9; }
+    * { box-sizing: border-box; } [hidden] { display: none !important; }
+    body { max-width: 1040px; margin: 0 auto; padding: 48px 22px; }
+    .hero { margin-bottom: 26px; }
+    .eyebrow { margin: 0 0 8px; color: #4763d1; font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.2rem); letter-spacing: -.045em; line-height: 1.05; }
+    .subtitle { max-width: 650px; margin: 14px 0 0; color: #607089; line-height: 1.6; }
+    .workspace { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 22px; align-items: start; }
+    .panel, .preview-panel { background: rgba(255,255,255,.9); border: 1px solid #dce4ef; border-radius: 18px; box-shadow: 0 16px 40px rgba(50,70,100,.08); }
+    .panel { display: grid; gap: 16px; padding: 22px; } .preview-panel { min-width: 0; padding: 18px; }
+    .field { display: grid; gap: 8px; } .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    label { color: #34435b; font-size: .82rem; font-weight: 750; }
+    input, select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid #cbd6e5; border-radius: 9px; background: #fff; color: #172033; font: inherit; }
+    input[type="range"] { width: 100%; accent-color: #4763d1; }
+    .range-line { display: flex; justify-content: space-between; color: #52627a; font-size: .8rem; }
+    input:focus, select:focus { outline: 3px solid rgba(71,99,209,.18); border-color: #4763d1; }
+    .check { display: flex; align-items: center; gap: 8px; color: #52627a; font-size: .85rem; } .check input { width: auto; min-height: auto; }
+    .size-estimate { margin: -2px 0 0; padding: 10px 12px; border: 1px solid #dce4ef; border-radius: 9px; background: #f7f9fc; color: #52627a; font-size: .78rem; line-height: 1.55; }
+    button { width: 100%; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 10px; background: linear-gradient(135deg,#4763d1,#7048c8); color: #fff; font: inherit; font-weight: 750; cursor: pointer; }
+    button:disabled { background: #b7c1cf; cursor: not-allowed; } .hint, #status { margin: 0; color: #718097; font-size: .82rem; line-height: 1.5; }
+    .canvas-wrap { min-height: 420px; overflow: auto; padding: 18px; border: 1px dashed #c8d4e4; border-radius: 12px; background: repeating-conic-gradient(#f2f5f9 0% 25%,#fff 0% 50%) 50%/18px 18px; }
+    canvas { display: block; max-width: 100%; height: auto; margin: 0 auto; box-shadow: 0 5px 18px rgba(30,40,60,.14); }
+    @media (max-width: 760px) { body { padding: 30px 16px; } .workspace { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <nav class="navbar" data-site-nav aria-label="Primary navigation"></nav>
+  <header class="hero">
+    <p class="eyebrow">PixelWriter</p><h1>PDF to PNG</h1>
+    <p class="subtitle">Render PDF pages as PNG with palette and compression controls. Processing happens locally in your browser.</p>
+  </header>
+  <div class="workspace">
+    <section class="panel" aria-label="PDF conversion settings">
+      <div class="field"><label for="file">Source PDF</label><input id="file" type="file" accept="application/pdf,.pdf"></div>
+      <div class="field-row">
+        <div class="field"><label for="startPage">Start page</label><select id="startPage" disabled><option>Load a PDF first</option></select></div>
+        <div class="field"><label for="endPage">End page</label><select id="endPage" disabled><option>Load a PDF first</option></select></div>
+      </div>
+      <div class="field"><label for="scale">Render scale</label><input id="scale" type="range" min="0" max="300" value="150" step="1"><div class="range-line"><span>0%</span><strong id="scaleValue">150%</strong><span>300%</span></div></div>
+      <div class="field"><label for="colors">Color mode</label><select id="colors"><option value="bw">Black &amp; white</option><option value="gray" selected>Grayscale</option><option value="16">16 colors</option><option value="256">256 colors</option></select></div>
+      <div class="field"><label for="compression">PNG output</label><select id="compression"><option value="lossless" selected>Lossless</option><option value="compressed">Compressed</option></select></div>
+      <button id="download" type="button" disabled>Download PNG</button>
+      <p id="status" role="status">Load a PDF to begin.</p>
+      <p id="sizeEstimate" class="size-estimate" role="status">Image size estimate will appear after loading a PDF.</p>
+      <p class="hint">Compressed output uses a reduced render scale when needed; PNG encoding itself remains lossless in the browser.</p>
+    </section>
+    <section class="preview-panel" aria-label="PNG preview">
+      <div class="preview-header">
+        <p class="preview-title">Preview</p>
+        <p class="preview-meta">
+          <span id="dimensions">No image loaded</span>
+          <span id="previewColor">—</span>
+        </p>
+      </div>
+      <div class="canvas-wrap"><canvas id="preview"></canvas></div>
+    </section>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
+  <script type="module">
+    const pdfjs = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs");
+    pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
+    const fileInput = document.querySelector("#file"), startPageSelect = document.querySelector("#startPage"), endPageSelect = document.querySelector("#endPage");
+    const scaleSelect = document.querySelector("#scale"), scaleValue = document.querySelector("#scaleValue"), colorsSelect = document.querySelector("#colors");
+    const compressionSelect = document.querySelector("#compression");
+    const canvas = document.querySelector("#preview"), context = canvas.getContext("2d", { alpha: false });
+    const download = document.querySelector("#download"), status = document.querySelector("#status"), dimensions = document.querySelector("#dimensions"), previewColor = document.querySelector("#previewColor"), sizeEstimate = document.querySelector("#sizeEstimate");
+    let pdf = null, outputCanvas = canvas, renderQueue = Promise.resolve();
+    previewColor.textContent = colorsSelect.options[colorsSelect.selectedIndex].text;
+    const setStatus = (message) => { status.textContent = message; };
+    function quantize() {
+      const mode = colorsSelect.value, image = context.getImageData(0, 0, canvas.width, canvas.height);
+      const levels = mode === "bw" ? 2 : mode === "gray" ? 4 : mode;
+      for (let i = 0; i < image.data.length; i += 4) {
+        let r = image.data[i], g = image.data[i + 1], b = image.data[i + 2];
+        if (mode === "bw" || mode === "gray") r = g = b = Math.round((r * .299 + g * .587 + b * .114) / 255 * (levels - 1)) * Math.round(255 / (levels - 1));
+        else {
+          const channelLevels = levels === "16" ? 4 : 8;
+          const step = 255 / (channelLevels - 1);
+          r = Math.round(r / step) * step; g = Math.round(g / step) * step; b = Math.round(b / step) * step;
+        }
+        image.data[i] = r; image.data[i + 1] = g; image.data[i + 2] = b; image.data[i + 3] = 255;
+      }
+      context.putImageData(image, 0, 0);
+    }
+    async function render() {
+      if (!pdf) return;
+      const startPage = Number(startPageSelect.value), endPage = Number(endPageSelect.value);
+      if (!startPage || !endPage || startPage > endPage) { download.disabled = true; setStatus("Choose a valid start and end page."); return; }
+      const selectedPages = Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index);
+      const scalePercent = Number(scaleSelect.value);
+      scaleValue.textContent = `${scalePercent}%`;
+      const scale = Math.max(0.01, scalePercent / 100) * (compressionSelect.value === "compressed" ? .75 : 1);
+      const pages = await Promise.all(selectedPages.map((pageNumber) => pdf.getPage(pageNumber)));
+      const viewports = pages.map((page) => page.getViewport({ scale }));
+      const width = Math.max(...viewports.map((viewport) => Math.ceil(viewport.width)));
+      const height = viewports.reduce((total, viewport) => total + Math.ceil(viewport.height), 0);
+      canvas.width = width; canvas.height = height; context.fillStyle = "#fff"; context.fillRect(0, 0, width, height);
+      let offsetY = 0;
+      for (let index = 0; index < pages.length; index++) {
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = Math.ceil(viewports[index].width);
+        pageCanvas.height = Math.ceil(viewports[index].height);
+        await pages[index].render({ canvasContext: pageCanvas.getContext("2d", { alpha: false }), viewport: viewports[index] }).promise;
+        context.drawImage(pageCanvas, 0, offsetY);
+        offsetY += Math.ceil(viewports[index].height);
+      }
+      outputCanvas = canvas; quantize();
+      dimensions.textContent = `${canvas.width.toLocaleString()} × ${canvas.height.toLocaleString()} px`;
+      previewColor.textContent = colorsSelect.options[colorsSelect.selectedIndex].text;
+      updateSizeEstimate();
+      download.disabled = false; setStatus(`${selectedPages.length} page(s) stitched.`);
+    }
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${Math.round(bytes)} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+    function updateSizeEstimate() {
+      const pixelCount = canvas.width * canvas.height;
+      const mode = colorsSelect.value;
+      const bitsPerPixel = mode === "bw" ? 1 : mode === "gray" ? 8 : mode === "16" ? 4 : 8;
+      const rawBytes = pixelCount * bitsPerPixel / 8;
+      const base64 = canvas.toDataURL("image/png").split(",")[1] || "";
+      const actualBytes = Math.max(0, Math.floor(base64.length * 3 / 4) - (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0));
+      const estimatedBytes = Math.max(1024, Math.ceil(rawBytes * (mode === "bw" ? .2 : .35) + 512));
+      sizeEstimate.textContent = `Estimated PNG: ${formatBytes(estimatedBytes)} · Current encoded PNG: ${formatBytes(actualBytes)} · ` +
+        `${bitsPerPixel}-bit raw data: ${formatBytes(rawBytes)}`;
+    }
+    function requestRender() {
+      renderQueue = renderQueue.catch(() => {}).then(render);
+      return renderQueue;
+    }
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0]; if (!file) return;
+      setStatus("Loading PDF…");
+      try {
+        pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+        [startPageSelect, endPageSelect].forEach((select) => {
+          select.innerHTML = "";
+          for (let i = 1; i <= pdf.numPages; i++) select.add(new Option(`Page ${i}`, i));
+          select.disabled = false;
+        });
+        startPageSelect.value = "1"; endPageSelect.value = String(pdf.numPages); await render();
+      } catch (error) {
+        pdf = null; startPageSelect.disabled = true; endPageSelect.disabled = true; download.disabled = true;
+        setStatus(`Could not load PDF: ${error.message}`);
+      }
+    });
+    [startPageSelect, endPageSelect].forEach((control) => control.addEventListener("change", requestRender));
+    [scaleSelect, colorsSelect, compressionSelect].forEach((control) => control.addEventListener("input", requestRender));
+    download.addEventListener("click", () => { const link = document.createElement("a"); link.download = "stitched-pages.png"; link.href = outputCanvas.toDataURL("image/png"); link.click(); });
+    fetch("test/test.pdf").then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.arrayBuffer();
+    }).then(async (data) => {
+      pdf = await pdfjs.getDocument({ data }).promise;
+      [startPageSelect, endPageSelect].forEach((select) => {
+        select.innerHTML = "";
+        for (let i = 1; i <= pdf.numPages; i++) select.add(new Option(`Page ${i}`, i));
+        select.disabled = false;
+      });
+      startPageSelect.value = "1";
+      endPageSelect.value = String(pdf.numPages);
+      await requestRender();
+      setStatus(`${pdf.numPages} page(s) loaded from default test.pdf.`);
+    }).catch((error) => setStatus(`Default test.pdf could not be loaded: ${error.message}`));
+  </script>
+</body>
+<script src="shared.js"></script>
+</html>

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PixelWriter · MD to PNG</title>
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #172033; background: #eef3f9; }
+    * { box-sizing: border-box; } body { max-width: 1040px; margin: 0 auto; padding: 48px 22px; }
+    .hero { margin-bottom:26px; } .eyebrow { margin:0 0 8px; color:#4763d1; font-size:.78rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    h1 { margin:0; font-size:clamp(2rem,5vw,3.2rem); letter-spacing:-.045em; line-height:1.05; } .subtitle { max-width:650px; margin:14px 0 0; color:#607089; line-height:1.6; }
+    .workspace { display:grid; grid-template-columns:minmax(260px,340px) 1fr; gap:22px; align-items:start; }
+    .panel,.preview-panel { background:rgba(255,255,255,.9); border:1px solid #dce4ef; border-radius:18px; box-shadow:0 16px 40px rgba(50,70,100,.08); }
+    .panel { display:grid; gap:16px; padding:22px; } .preview-panel { min-width:0; padding:18px; }
+    .field { display:grid; gap:8px; } .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; } label { color:#34435b; font-size:.82rem; font-weight:750; }
+    input,textarea,select { width:100%; padding:9px 10px; border:1px solid #cbd6e5; border-radius:9px; background:#fff; color:#172033; font:inherit; }
+    textarea { min-height:180px; resize:vertical; line-height:1.5; } input:focus,textarea:focus,select:focus { outline:3px solid rgba(71,99,209,.18); border-color:#4763d1; }
+    button { width:100%; min-height:44px; padding:10px 16px; border:0; border-radius:10px; background:linear-gradient(135deg,#4763d1,#7048c8); color:#fff; font:inherit; font-weight:750; cursor:pointer; }
+    .hint,#status { margin:0; color:#718097; font-size:.82rem; line-height:1.5; }
+    .size-estimate { margin:-2px 0 0; padding:10px 12px; border:1px solid #dce4ef; border-radius:9px; background:#f7f9fc; color:#52627a; font-size:.78rem; line-height:1.55; }
+    input[type="range"] { width:100%; accent-color:#4763d1; } .range-line { display:flex; justify-content:space-between; color:#52627a; font-size:.8rem; }
+    .canvas-wrap { min-height:420px; overflow:auto; padding:20px; border:1px dashed #c8d4e4; border-radius:12px; background:repeating-conic-gradient(#f2f5f9 0% 25%,#fff 0% 50%) 50%/18px 18px; }
+    #previewStage { transform-origin: top left; }
+    #rendered { width:794px; max-width:none; min-height:1123px; padding:56px; background:#fff; color:#172033; box-shadow:0 5px 18px rgba(30,40,60,.14); line-height:1.6; }
+    #rendered h1,#rendered h2,#rendered h3 { line-height:1.2; } #rendered pre { padding:14px; overflow:auto; border-radius:8px; background:#f1f4f8; } #rendered code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
+    #rendered blockquote { margin-left:0; padding-left:16px; border-left:4px solid #b9c6ee; color:#607089; } #rendered img { max-width:100%; }
+    @media (max-width:760px) { body{padding:30px 16px}.workspace{grid-template-columns:1fr}.nav-links a{padding:7px 6px} }
+  </style>
+</head>
+<body>
+  <nav class="navbar" data-site-nav aria-label="Primary navigation"></nav>
+  <header class="hero"><p class="eyebrow">PixelWriter</p><h1>MD to PNG</h1><p class="subtitle">Render Markdown into a polished PNG with headings, lists, code blocks, and LaTeX equations.</p></header>
+  <div class="workspace">
+    <section class="panel" aria-label="Markdown conversion settings">
+      <div class="field"><label for="file">Markdown file</label><input id="file" type="file" accept=".md,.markdown,text/markdown,text/plain"></div>
+      <div class="field"><label for="fontFamily">Font family</label><input id="fontFamily" type="search" list="fontSuggestions" value="Arial" placeholder="Search or enter a font name" spellcheck="false"><datalist id="fontSuggestions"><option value="Arial"></option><option value="Inter"></option><option value="Georgia"></option><option value="Courier New"></option><option value="Consolas"></option></datalist></div>
+      <div class="field"><label for="scale">Render scale</label><input id="scale" type="range" min="0" max="300" value="150" step="1"><div class="range-line"><span>0%</span><strong id="scaleValue">150%</strong><span>300%</span></div></div>
+      <div class="field"><label for="colors">Color mode</label><select id="colors"><option value="bw">Black &amp; white</option><option value="gray" selected>Grayscale</option><option value="16">16 colors</option><option value="256">256 colors</option></select></div>
+      <div class="field"><label for="compression">PNG output</label><select id="compression"><option value="lossless" selected>Lossless</option><option value="compressed">Compressed</option></select></div>
+      <button id="download" type="button">Download PNG</button>
+      <p id="status" role="status">Ready.</p>
+      <p id="sizeEstimate" class="size-estimate" role="status">Image size estimate will appear after rendering.</p>
+      <p class="hint">LaTeX uses KaTeX. Use <code>$...$</code> for inline math and <code>$$...$$</code> for display equations.</p>
+    </section>
+    <section class="preview-panel" aria-label="Markdown preview"><div class="preview-header"><p class="preview-title">Preview</p><p class="preview-meta"><span id="previewDimensions">No image loaded</span><span id="previewColor">—</span></p></div><div class="canvas-wrap"><div id="previewStage"><article id="rendered"></article></div></div></section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/marked@15.0.7/lib/marked.umd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script>
+    const fileInput = document.querySelector("#file");
+    const rendered = document.querySelector("#rendered"), previewStage = document.querySelector("#previewStage"), download = document.querySelector("#download"), status = document.querySelector("#status");
+    const sizeEstimate = document.querySelector("#sizeEstimate"), previewDimensions = document.querySelector("#previewDimensions"), previewColor = document.querySelector("#previewColor"), compression = document.querySelector("#compression");
+    const scale = document.querySelector("#scale"), scaleValue = document.querySelector("#scaleValue"), colors = document.querySelector("#colors");
+    const fontFamily = document.querySelector("#fontFamily");
+    marked.setOptions({ breaks: true });
+    function updatePreviewScale() {
+      const previewScale = Math.max(.01, Number(scale.value) / 100);
+      const width = rendered.offsetWidth;
+      const height = rendered.offsetHeight;
+      previewStage.style.transform = `scale(${previewScale})`;
+      previewStage.style.width = `${width * previewScale}px`;
+      previewStage.style.height = `${height * previewScale}px`;
+      previewDimensions.textContent = `${Math.round(width * previewScale).toLocaleString()} × ${Math.round(height * previewScale).toLocaleString()} px`;
+    }
+    function renderMarkdown() {
+      rendered.style.fontFamily = `"${fontFamily.value.trim() || "Arial"}", sans-serif`;
+      rendered.style.fontSize = "16px";
+      rendered.style.lineHeight = "1.6";
+      const markdown = window.markdownSource
+        .replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => `<div class="math-display">${formula}</div>`)
+        .replace(/\$([^$\n]+)\$/g, (_, formula) => `<span class="math-inline">${formula}</span>`);
+      rendered.innerHTML = marked.parse(markdown);
+      rendered.querySelectorAll(".math-display").forEach((element) => katex.render(element.textContent, element, { displayMode: true, throwOnError: false }));
+      rendered.querySelectorAll(".math-inline").forEach((element) => katex.render(element.textContent, element, { throwOnError: false }));
+      status.textContent = `${Math.round(rendered.offsetHeight)} px preview height.`;
+      updatePreviewScale();
+      previewColor.textContent = colors.options[colors.selectedIndex].text;
+      updateSizeEstimate();
+    }
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${Math.round(bytes)} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    }
+    async function createPng() {
+      const renderScale = Math.max(.01, Number(scale.value) / 100);
+      return html2canvas(rendered, {
+        backgroundColor: "#ffffff",
+        scale: renderScale * (compression.value === "compressed" ? .75 : 1),
+        useCORS: true
+      });
+    }
+    async function updateSizeEstimate() {
+      const exportScale = Math.max(.01, Number(scale.value) / 100) * (compression.value === "compressed" ? .75 : 1);
+      const width = Math.ceil(rendered.offsetWidth * exportScale);
+      const height = Math.ceil(rendered.offsetHeight * exportScale);
+      const bitsPerPixel = colors.value === "bw" ? 1 : colors.value === "16" ? 4 : 8;
+      const rawBytes = width * height * bitsPerPixel / 8;
+      sizeEstimate.textContent = `Estimated PNG: ${formatBytes(Math.max(1024, rawBytes * (compression.value === "compressed" ? .12 : .2)))} · ` +
+        `Raw pixel data: ${formatBytes(rawBytes)} · ${width.toLocaleString()} × ${height.toLocaleString()} px`;
+    }
+    fontFamily.addEventListener("input", renderMarkdown);
+    [scale, colors, compression].forEach((control) => control.addEventListener("input", () => {
+      scaleValue.textContent = `${scale.value}%`;
+      previewColor.textContent = colors.options[colors.selectedIndex].text;
+      if (control === scale) updatePreviewScale();
+      updateSizeEstimate();
+    }));
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      window.markdownSource = await file.text();
+      renderMarkdown();
+    });
+    fetch("test/test.md").then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.text();
+    }).then((markdown) => {
+      window.markdownSource = markdown;
+      renderMarkdown();
+      status.textContent += " Loaded default test.md.";
+    }).catch(() => {
+      status.textContent = "Choose a Markdown file to begin.";
+    });
+    download.addEventListener("click", async () => {
+      status.textContent = "Preparing PNG…";
+      const image = await createPng();
+      if (colors.value !== "gray" && colors.value !== "256") {
+        const pixels = image.getContext("2d").getImageData(0, 0, image.width, image.height);
+        const levels = colors.value === "bw" ? 2 : 4;
+        for (let i = 0; i < pixels.data.length; i += 4) {
+          const luminance = pixels.data[i] * .299 + pixels.data[i + 1] * .587 + pixels.data[i + 2] * .114;
+          const value = Math.round(luminance / 255 * (levels - 1)) * Math.round(255 / (levels - 1));
+          pixels.data[i] = pixels.data[i + 1] = pixels.data[i + 2] = value;
+        }
+        image.getContext("2d").putImageData(pixels, 0, 0);
+      } else if (colors.value === "16") {
+        const pixels = image.getContext("2d").getImageData(0, 0, image.width, image.height);
+        const step = 85;
+        for (let i = 0; i < pixels.data.length; i += 4) {
+          pixels.data[i] = Math.round(pixels.data[i] / step) * step;
+          pixels.data[i + 1] = Math.round(pixels.data[i + 1] / step) * step;
+          pixels.data[i + 2] = Math.round(pixels.data[i + 2] / step) * step;
+        }
+        image.getContext("2d").putImageData(pixels, 0, 0);
+      }
+      const link = document.createElement("a"); link.download = "markdown.png"; link.href = image.toDataURL("image/png"); link.click(); status.textContent = "PNG ready.";
+    });
+    window.markdownSource = "# Select a Markdown file to preview.";
+    renderMarkdown();
+  </script>
+</body>
+<script src="shared.js"></script>
+</html>

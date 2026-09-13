@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PixelWriter · Tools</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #172033; background: #eef3f9; }
+    * { box-sizing: border-box; }
+    body { max-width: 1040px; margin: 0 auto; padding: 48px 22px; }
+    .hero { margin-bottom: 34px; }
+    .eyebrow { margin: 0 0 9px; color: #4763d1; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(2.4rem, 7vw, 4.6rem); letter-spacing: -.06em; line-height: .98; }
+    .subtitle { max-width: 620px; margin: 18px 0 0; color: #607089; font-size: 1.05rem; line-height: 1.65; }
+    .tools { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+    .tool-card { display: flex; min-height: 220px; flex-direction: column; padding: 24px; border: 1px solid #dce4ef; border-radius: 18px; background: rgba(255,255,255,.9); box-shadow: 0 16px 40px rgba(50,70,100,.08); }
+    .tool-icon { display: grid; width: 44px; height: 44px; place-items: center; margin-bottom: 22px; border-radius: 12px; background: #e9edff; color: #4763d1; font-size: 1.35rem; font-weight: 800; }
+    .tool-card h2 { margin: 0; font-size: 1.18rem; letter-spacing: -.02em; }
+    .tool-card p { margin: 10px 0 22px; color: #718097; font-size: .9rem; line-height: 1.55; }
+    .tool-card a, .tool-card button { width: fit-content; margin-top: auto; padding: 9px 14px; border: 0; border-radius: 9px; background: linear-gradient(135deg, #4763d1, #7048c8); color: white; font: inherit; font-size: .86rem; font-weight: 750; text-decoration: none; cursor: pointer; }
+    .tool-card.placeholder { opacity: .7; }
+    .tool-card.placeholder .tool-icon { background: #edf1f6; color: #7e8ba0; }
+    .tool-card.placeholder button { background: #d6dde8; color: #52627a; cursor: default; }
+    footer { margin-top: 38px; color: #8a97aa; font-size: .78rem; }
+  </style>
+</head>
+<body>
+  <nav class="navbar" data-site-nav aria-label="Primary navigation"></nav>
+  <header class="hero">
+    <p class="eyebrow">PixelWriter</p>
+    <h1>Small tools.<br>Sharp pixels.</h1>
+    <p class="subtitle">A focused collection of lightweight tools for turning text and ideas into precise visual assets.</p>
+  </header>
+
+  <main class="tools" aria-label="PixelWriter tools">
+    <article class="tool-card">
+      <div class="tool-icon" aria-hidden="true">TXT</div>
+      <h2>TXT to pixel PNG</h2>
+      <p>Convert ASCII text into a crisp black-and-white or grayscale PNG with customizable bitmap cells and font rendering.</p>
+      <a href="txt-to-png.html">Open tool</a>
+    </article>
+    <article class="tool-card">
+      <div class="tool-icon" aria-hidden="true">PDF</div>
+      <h2>PDF to PNG</h2>
+      <p>Render PDF pages as PNG with palette, compression, and automatic white-margin cropping controls.</p>
+      <a href="pdf-to-png.html">Open tool</a>
+    </article>
+    <article class="tool-card">
+      <div class="tool-icon" aria-hidden="true">MD</div>
+      <h2>MD to PNG</h2>
+      <p>Render Markdown with headings, lists, code blocks, and LaTeX equations into a downloadable PNG.</p>
+      <a href="md-to-png.html">Open tool</a>
+    </article>
+    <article class="tool-card placeholder">
+      <div class="tool-icon" aria-hidden="true">◈</div>
+      <h2>Image pixelizer</h2>
+      <p>Turn images into controlled pixel-art patterns. This tool is planned for a future release.</p>
+      <button type="button" disabled>Coming soon</button>
+    </article>
+  </main>
+
+  <footer>PixelWriter · Local-first utilities that run in your browser.</footer>
+</body>
+<script src="shared.js"></script>
+</html>
