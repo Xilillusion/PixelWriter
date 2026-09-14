@@ -17,4 +17,12 @@
       ).join("")}
     </div>
   `;
+
+  document.body.insertAdjacentHTML("beforeend", `
+    <footer class="site-footer">
+      <a href="https://github.com/Xilillusion/PixelWriter.git" target="_blank" rel="noreferrer">
+        GitHub · Xilillusion/PixelWriter
+      </a>
+    </footer>
+  `);
 })();

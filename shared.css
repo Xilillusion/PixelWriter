@@ -11,6 +11,24 @@
   box-shadow: 0 8px 22px rgba(50, 70, 100, .06);
 }
 
+.site-footer {
+  margin-top: 38px;
+  padding: 18px 0 4px;
+  border-top: 1px solid #dce4ef;
+  color: #718097;
+  font-size: .78rem;
+  text-align: center;
+}
+
+.site-footer a {
+  color: #4763d1;
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  text-decoration: underline;
+}
+
 .brand {
   color: #172033;
   font-size: .92rem;
