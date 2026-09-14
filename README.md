@@ -1,17 +1,17 @@
 # PixelWriter
 
-PixelWriter is a local-first browser toolkit for converting text, PDF pages, and Markdown documents into PNG images.
+PixelWriter is a local-first browser toolkit for converting ASCII text, selected PDF pages, and Markdown documents into downloadable PNG images. Processing happens in the browser.
 
 ## Tools
 
 ### TXT to pixel PNG
 
-- Converts ASCII text into a crisp PNG.
+- Converts ASCII text into a crisp PNG and replaces non-ASCII characters with `?`.
 - Includes a built-in 5x7 bitmap glyph set.
-- Supports system monospace fonts.
+- Supports system monospace fonts with searchable font-family input.
 - Supports custom cell width and height.
-- Supports black-and-white and grayscale output.
-- Shows preview dimensions and PNG size estimates.
+- Supports black-and-white and four-level grayscale output.
+- Shows preview dimensions, current encoded PNG size, and raw-data size.
 
 ### PDF to PNG
 
@@ -20,17 +20,18 @@ PixelWriter is a local-first browser toolkit for converting text, PDF pages, and
 - Supports vertical stitching of multiple pages.
 - Supports 0-300% render scale.
 - Supports black-and-white, grayscale, 16-color, and 256-color output.
-- Supports lossless and compressed render settings.
-- Shows preview dimensions and PNG size estimates.
+- Supports lossless and compressed render settings; compressed output uses a reduced render scale before PNG encoding.
+- Shows preview dimensions, current encoded PNG size, and raw-data size.
 
 ### MD to PNG
 
 - Converts Markdown files into styled PNG images.
-- Supports headings, lists, links, blockquotes, code blocks, and LaTeX.
-- Supports system font selection.
+- Supports headings, lists, links, blockquotes, code blocks, and inline/display LaTeX through KaTeX.
+- Supports searchable system font-family input.
 - Supports 0-300% render scale.
 - Supports black-and-white, grayscale, 16-color, and 256-color output.
-- Shows preview dimensions and PNG size estimates.
+- Supports lossless and compressed render settings; compressed output uses a reduced render scale before PNG encoding.
+- Shows preview dimensions, current encoded PNG size, and raw-data size.
 
 ## Running locally
 
@@ -85,10 +86,10 @@ The browser loads these libraries from public CDNs:
 
 ## Limitations
 
-- PNG size values are estimates; the final encoded size depends on image content and browser encoding.
-- “Compressed” output reduces render scale before PNG encoding. Browser PNG encoding itself remains lossless.
+- “Compressed” output reduces render scale before PNG encoding. Browser PNG encoding itself remains lossless; it is not JPEG-style lossy compression.
 - PDF and Markdown rendering depends on browser support and the availability of the CDN libraries.
 - TXT bitmap mode replaces non-ASCII characters with `?`.
+- Opening the pages directly with `file://` may prevent the default test files from loading; use a local HTTP server when needed.
 
 ## Citation
 
