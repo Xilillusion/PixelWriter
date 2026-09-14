@@ -17,7 +17,7 @@ PixelWriter is a local-first browser toolkit for converting ASCII text, selected
 
 - Renders selected PDF pages with PDF.js.
 - Supports start and end page selection.
-- Supports vertical stitching of multiple pages.
+- Supports vertical or horizontal stitching of multiple pages.
 - Supports 0-300% render scale.
 - Supports black-and-white, grayscale, 16-color, and 256-color output.
 - Supports lossless and compressed render settings; compressed output uses a reduced render scale before PNG encoding.

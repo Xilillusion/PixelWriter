@@ -45,6 +45,7 @@
         <div class="field"><label for="startPage">Start page</label><select id="startPage" disabled><option>Load a PDF first</option></select></div>
         <div class="field"><label for="endPage">End page</label><select id="endPage" disabled><option>Load a PDF first</option></select></div>
       </div>
+      <div class="field"><label for="layout">Page layout</label><select id="layout"><option value="vertical" selected>Vertical stitching</option><option value="horizontal">Horizontal stitching</option></select></div>
       <div class="field"><label for="scale">Render scale</label><input id="scale" type="range" min="0" max="300" value="150" step="1"><div class="range-line"><span>0%</span><strong id="scaleValue">150%</strong><span>300%</span></div></div>
       <div class="field"><label for="colors">Color mode</label><select id="colors"><option value="bw">Black &amp; white</option><option value="gray" selected>Grayscale</option><option value="16">16 colors</option><option value="256">256 colors</option></select></div>
       <div class="field"><label for="compression">PNG output</label><select id="compression"><option value="lossless" selected>Lossless</option><option value="compressed">Compressed</option></select></div>
@@ -69,7 +70,7 @@
     const pdfjs = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs");
     pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs";
     const fileInput = document.querySelector("#file"), startPageSelect = document.querySelector("#startPage"), endPageSelect = document.querySelector("#endPage");
-    const scaleSelect = document.querySelector("#scale"), scaleValue = document.querySelector("#scaleValue"), colorsSelect = document.querySelector("#colors");
+    const layoutSelect = document.querySelector("#layout"), scaleSelect = document.querySelector("#scale"), scaleValue = document.querySelector("#scaleValue"), colorsSelect = document.querySelector("#colors");
     const compressionSelect = document.querySelector("#compression");
     const canvas = document.querySelector("#preview"), context = canvas.getContext("2d", { alpha: false });
     const download = document.querySelector("#download"), status = document.querySelector("#status"), dimensions = document.querySelector("#dimensions"), previewColor = document.querySelector("#previewColor"), sizeDetails = document.querySelector("#sizeDetails");
@@ -101,23 +102,26 @@
       const scale = Math.max(0.01, scalePercent / 100) * (compressionSelect.value === "compressed" ? .75 : 1);
       const pages = await Promise.all(selectedPages.map((pageNumber) => pdf.getPage(pageNumber)));
       const viewports = pages.map((page) => page.getViewport({ scale }));
-      const width = Math.max(...viewports.map((viewport) => Math.ceil(viewport.width)));
-      const height = viewports.reduce((total, viewport) => total + Math.ceil(viewport.height), 0);
+      const pageWidths = viewports.map((viewport) => Math.ceil(viewport.width));
+      const pageHeights = viewports.map((viewport) => Math.ceil(viewport.height));
+      const isHorizontal = layoutSelect.value === "horizontal";
+      const width = isHorizontal ? pageWidths.reduce((total, pageWidth) => total + pageWidth, 0) : Math.max(...pageWidths);
+      const height = isHorizontal ? Math.max(...pageHeights) : pageHeights.reduce((total, pageHeight) => total + pageHeight, 0);
       canvas.width = width; canvas.height = height; context.fillStyle = "#fff"; context.fillRect(0, 0, width, height);
-      let offsetY = 0;
+      let offset = 0;
       for (let index = 0; index < pages.length; index++) {
         const pageCanvas = document.createElement("canvas");
-        pageCanvas.width = Math.ceil(viewports[index].width);
-        pageCanvas.height = Math.ceil(viewports[index].height);
+        pageCanvas.width = pageWidths[index];
+        pageCanvas.height = pageHeights[index];
         await pages[index].render({ canvasContext: pageCanvas.getContext("2d", { alpha: false }), viewport: viewports[index] }).promise;
-        context.drawImage(pageCanvas, 0, offsetY);
-        offsetY += Math.ceil(viewports[index].height);
+        context.drawImage(pageCanvas, isHorizontal ? offset : 0, isHorizontal ? 0 : offset);
+        offset += isHorizontal ? pageWidths[index] : pageHeights[index];
       }
       outputCanvas = canvas; quantize();
       dimensions.textContent = `${canvas.width.toLocaleString()} × ${canvas.height.toLocaleString()} px`;
       previewColor.textContent = colorsSelect.options[colorsSelect.selectedIndex].text;
       updateSizeDetails();
-      download.disabled = false; setStatus(`${selectedPages.length} page(s) stitched.`);
+      download.disabled = false; setStatus(`${selectedPages.length} page(s) stitched ${isHorizontal ? "horizontally" : "vertically"}.`);
     }
     function formatBytes(bytes) {
       if (bytes < 1024) return `${Math.round(bytes)} B`;
@@ -156,7 +160,7 @@
       }
     });
     [startPageSelect, endPageSelect].forEach((control) => control.addEventListener("change", requestRender));
-    [scaleSelect, colorsSelect, compressionSelect].forEach((control) => control.addEventListener("input", requestRender));
+    [layoutSelect, scaleSelect, colorsSelect, compressionSelect].forEach((control) => control.addEventListener("input", requestRender));
     download.addEventListener("click", () => { const link = document.createElement("a"); link.download = outputName; link.href = outputCanvas.toDataURL("image/png"); link.click(); });
     fetch("test/test.pdf").then((response) => {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
