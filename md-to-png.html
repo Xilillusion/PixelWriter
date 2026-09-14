@@ -20,7 +20,7 @@
     textarea { min-height:180px; resize:vertical; line-height:1.5; } input:focus,textarea:focus,select:focus { outline:3px solid rgba(71,99,209,.18); border-color:#4763d1; }
     button { width:100%; min-height:44px; padding:10px 16px; border:0; border-radius:10px; background:linear-gradient(135deg,#4763d1,#7048c8); color:#fff; font:inherit; font-weight:750; cursor:pointer; }
     .hint,#status { margin:0; color:#718097; font-size:.82rem; line-height:1.5; }
-    .size-estimate { margin:-2px 0 0; padding:10px 12px; border:1px solid #dce4ef; border-radius:9px; background:#f7f9fc; color:#52627a; font-size:.78rem; line-height:1.55; }
+    .size-details { margin:-2px 0 0; padding:10px 12px; border:1px solid #dce4ef; border-radius:9px; background:#f7f9fc; color:#52627a; font-size:.78rem; line-height:1.55; }
     input[type="range"] { width:100%; accent-color:#4763d1; } .range-line { display:flex; justify-content:space-between; color:#52627a; font-size:.8rem; }
     .canvas-wrap { min-height:420px; overflow:auto; padding:20px; border:1px dashed #c8d4e4; border-radius:12px; background:repeating-conic-gradient(#f2f5f9 0% 25%,#fff 0% 50%) 50%/18px 18px; }
     #previewStage { transform-origin: top left; }
@@ -42,7 +42,7 @@
       <div class="field"><label for="compression">PNG output</label><select id="compression"><option value="lossless" selected>Lossless</option><option value="compressed">Compressed</option></select></div>
       <button id="download" type="button">Download PNG</button>
       <p id="status" role="status">Ready.</p>
-      <p id="sizeEstimate" class="size-estimate" role="status">Image size estimate will appear after rendering.</p>
+      <p id="sizeDetails" class="size-details" role="status">PNG size details will appear after rendering.</p>
       <p class="hint">LaTeX uses KaTeX. Use <code>$...$</code> for inline math and <code>$$...$$</code> for display equations.</p>
     </section>
     <section class="preview-panel" aria-label="Markdown preview"><div class="preview-header"><p class="preview-title">Preview</p><p class="preview-meta"><span id="previewDimensions">No image loaded</span><span id="previewColor">—</span></p></div><div class="canvas-wrap"><div id="previewStage"><article id="rendered"></article></div></div></section>
@@ -53,10 +53,11 @@
   <script>
     const fileInput = document.querySelector("#file");
     const rendered = document.querySelector("#rendered"), previewStage = document.querySelector("#previewStage"), download = document.querySelector("#download"), status = document.querySelector("#status");
-    const sizeEstimate = document.querySelector("#sizeEstimate"), previewDimensions = document.querySelector("#previewDimensions"), previewColor = document.querySelector("#previewColor"), compression = document.querySelector("#compression");
+    const sizeDetails = document.querySelector("#sizeDetails"), previewDimensions = document.querySelector("#previewDimensions"), previewColor = document.querySelector("#previewColor"), compression = document.querySelector("#compression");
     const scale = document.querySelector("#scale"), scaleValue = document.querySelector("#scaleValue"), colors = document.querySelector("#colors");
     const fontFamily = document.querySelector("#fontFamily");
     let outputName = "test.png";
+    let sizeRequest = 0;
     marked.setOptions({ breaks: true });
     function getEffectiveScale() {
       return Math.max(.01, Number(scale.value) / 100) * (compression.value === "compressed" ? .75 : 1);
@@ -83,7 +84,7 @@
       status.textContent = `${Math.round(rendered.offsetHeight)} px preview height.`;
       updatePreviewScale();
       previewColor.textContent = colors.options[colors.selectedIndex].text;
-      updateSizeEstimate();
+      updateSizeDetails();
     }
     function formatBytes(bytes) {
       if (bytes < 1024) return `${Math.round(bytes)} B`;
@@ -100,21 +101,30 @@
         useCORS: true
       });
     }
-    async function updateSizeEstimate() {
+    async function updateSizeDetails() {
+      const request = ++sizeRequest;
       const exportScale = getEffectiveScale();
       const width = Math.round(rendered.offsetWidth * exportScale);
       const height = Math.round(rendered.offsetHeight * exportScale);
       const bitsPerPixel = colors.value === "bw" ? 1 : colors.value === "16" ? 4 : 8;
       const rawBytes = width * height * bitsPerPixel / 8;
-      sizeEstimate.textContent = `Estimated PNG: ${formatBytes(Math.max(1024, rawBytes * (compression.value === "compressed" ? .12 : .2)))} · ` +
-        `Raw pixel data: ${formatBytes(rawBytes)} · ${width.toLocaleString()} × ${height.toLocaleString()} px`;
+      sizeDetails.textContent = `Encoding PNG… · ` +
+        `${bitsPerPixel}-bit raw data: ${formatBytes(rawBytes)}`;
+      const image = await createPng();
+      if (request !== sizeRequest) return;
+      const base64 = image.toDataURL("image/png").split(",")[1] || "";
+      const actualBytes = Math.max(0, Math.floor(base64.length * 3 / 4) -
+        (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0));
+      previewDimensions.textContent = `${image.width.toLocaleString()} × ${image.height.toLocaleString()} px`;
+      sizeDetails.textContent = `Current encoded PNG: ${formatBytes(actualBytes)} · ` +
+        `${bitsPerPixel}-bit raw data: ${formatBytes(image.width * image.height * bitsPerPixel / 8)}`;
     }
     fontFamily.addEventListener("input", renderMarkdown);
     [scale, colors, compression].forEach((control) => control.addEventListener("input", () => {
       scaleValue.textContent = `${scale.value}%`;
       previewColor.textContent = colors.options[colors.selectedIndex].text;
       if (control === scale || control === compression) updatePreviewScale();
-      updateSizeEstimate();
+      updateSizeDetails();
     }));
     fileInput.addEventListener("change", async () => {
       const file = fileInput.files[0];

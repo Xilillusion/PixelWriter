@@ -31,7 +31,7 @@
     .clear-search { position: absolute; top: 5px; right: 5px; width: 30px; min-height: 30px; padding: 0; border-radius: 7px; background: transparent; color: #718097; box-shadow: none; font-size: 1.15rem; line-height: 1; }
     .clear-search:hover:not(:disabled) { transform: none; background: #eef3f9; color: #34435b; box-shadow: none; }
     .field-note { margin: -2px 0 0; color: #718097; font-size: .76rem; }
-    .size-estimate { margin: -4px 0 0; padding: 10px 12px; border: 1px solid #dce4ef; border-radius: 9px; background: #f7f9fc; color: #52627a; font-size: .78rem; line-height: 1.55; }
+    .size-details { margin: -4px 0 0; padding: 10px 12px; border: 1px solid #dce4ef; border-radius: 9px; background: #f7f9fc; color: #52627a; font-size: .78rem; line-height: 1.55; }
     button { width: 100%; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 10px; background: linear-gradient(135deg, #4763d1, #7048c8); color: white; font: inherit; font-weight: 750; cursor: pointer; box-shadow: 0 8px 16px rgba(71, 76, 190, .2); transition: transform .15s, box-shadow .15s; }
     button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 11px 20px rgba(71, 76, 190, .28); }
     button:disabled { background: #b7c1cf; box-shadow: none; cursor: not-allowed; }
@@ -93,7 +93,7 @@
     <p class="hint">The bitmap mode keeps a one-pixel white gap on the right and bottom of each glyph cell.</p>
     <button id="download" type="button" disabled>Download PNG</button>
     <p id="status" role="status"></p>
-    <p id="sizeEstimate" class="size-estimate" role="status">Image size estimate will appear after loading a TXT file.</p>
+    <p id="sizeDetails" class="size-details" role="status">PNG size details will appear after loading a TXT file.</p>
     </section>
     <section class="preview-panel" aria-label="PNG preview">
       <div class="preview-header">
@@ -119,7 +119,7 @@
     const fontFamilyOption = document.querySelector("#fontFamilyOption");
     const downloadButton = document.querySelector("#download");
     const status = document.querySelector("#status");
-    const sizeEstimate = document.querySelector("#sizeEstimate");
+    const sizeDetails = document.querySelector("#sizeDetails");
     const previewMeta = document.querySelector("#previewMeta");
     const previewColor = document.querySelector("#previewColor");
     const canvas = document.querySelector("#preview");
@@ -291,7 +291,7 @@
         (replacedCount ? `${replacedCount} non-ASCII character(s) replaced with ?.` : "ASCII only.");
       previewMeta.textContent = `${width.toLocaleString()} × ${height.toLocaleString()} px`;
       previewColor.textContent = colorModeSelect.options[colorModeSelect.selectedIndex].text;
-      updateSizeEstimate(width, height, colorMode);
+      updateSizeDetails(width, height, colorMode);
       downloadButton.disabled = false;
     }
 
@@ -320,17 +320,14 @@
       return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
 
-    function updateSizeEstimate(width, height, colorMode) {
+    function updateSizeDetails(width, height, colorMode) {
       const dataUrl = canvas.toDataURL("image/png");
       const base64 = dataUrl.split(",")[1] || "";
       const actualPngBytes = Math.max(0, Math.floor(base64.length * 3 / 4) - (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0));
       const rawBytes = width * height * (colorMode === "gray" ? 1 : 0.125);
-      const estimatedPngBytes = Math.max(1024, Math.ceil(rawBytes * (colorMode === "gray" ? 0.35 : 0.2) + 512));
       const rawLabel = colorMode === "gray" ? "8-bit raw data" : "1-bit raw data";
-      sizeEstimate.textContent = `Estimated PNG: ${formatBytes(estimatedPngBytes)} · ` +
-        `Current encoded PNG: ${formatBytes(actualPngBytes)} · ` +
-        `${rawLabel}: ${formatBytes(rawBytes)} · ` +
-        `${width.toLocaleString()} × ${height.toLocaleString()} px`;
+      sizeDetails.textContent = `Current encoded PNG: ${formatBytes(actualPngBytes)} · ` +
+        `${rawLabel}: ${formatBytes(rawBytes)}`;
     }
 
     fileInput.addEventListener("change", async () => {

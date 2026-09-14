@@ -24,7 +24,7 @@
     .range-line { display: flex; justify-content: space-between; color: #52627a; font-size: .8rem; }
     input:focus, select:focus { outline: 3px solid rgba(71,99,209,.18); border-color: #4763d1; }
     .check { display: flex; align-items: center; gap: 8px; color: #52627a; font-size: .85rem; } .check input { width: auto; min-height: auto; }
-    .size-estimate { margin: -2px 0 0; padding: 10px 12px; border: 1px solid #dce4ef; border-radius: 9px; background: #f7f9fc; color: #52627a; font-size: .78rem; line-height: 1.55; }
+    .size-details { margin: -2px 0 0; padding: 10px 12px; border: 1px solid #dce4ef; border-radius: 9px; background: #f7f9fc; color: #52627a; font-size: .78rem; line-height: 1.55; }
     button { width: 100%; min-height: 44px; padding: 10px 16px; border: 0; border-radius: 10px; background: linear-gradient(135deg,#4763d1,#7048c8); color: #fff; font: inherit; font-weight: 750; cursor: pointer; }
     button:disabled { background: #b7c1cf; cursor: not-allowed; } .hint, #status { margin: 0; color: #718097; font-size: .82rem; line-height: 1.5; }
     .canvas-wrap { min-height: 420px; overflow: auto; padding: 18px; border: 1px dashed #c8d4e4; border-radius: 12px; background: repeating-conic-gradient(#f2f5f9 0% 25%,#fff 0% 50%) 50%/18px 18px; }
@@ -50,7 +50,7 @@
       <div class="field"><label for="compression">PNG output</label><select id="compression"><option value="lossless" selected>Lossless</option><option value="compressed">Compressed</option></select></div>
       <button id="download" type="button" disabled>Download PNG</button>
       <p id="status" role="status">Load a PDF to begin.</p>
-      <p id="sizeEstimate" class="size-estimate" role="status">Image size estimate will appear after loading a PDF.</p>
+      <p id="sizeDetails" class="size-details" role="status">PNG size details will appear after loading a PDF.</p>
       <p class="hint">Compressed output uses a reduced render scale when needed; PNG encoding itself remains lossless in the browser.</p>
     </section>
     <section class="preview-panel" aria-label="PNG preview">
@@ -72,7 +72,7 @@
     const scaleSelect = document.querySelector("#scale"), scaleValue = document.querySelector("#scaleValue"), colorsSelect = document.querySelector("#colors");
     const compressionSelect = document.querySelector("#compression");
     const canvas = document.querySelector("#preview"), context = canvas.getContext("2d", { alpha: false });
-    const download = document.querySelector("#download"), status = document.querySelector("#status"), dimensions = document.querySelector("#dimensions"), previewColor = document.querySelector("#previewColor"), sizeEstimate = document.querySelector("#sizeEstimate");
+    const download = document.querySelector("#download"), status = document.querySelector("#status"), dimensions = document.querySelector("#dimensions"), previewColor = document.querySelector("#previewColor"), sizeDetails = document.querySelector("#sizeDetails");
     let pdf = null, outputCanvas = canvas, renderQueue = Promise.resolve(), outputName = "test.png";
     previewColor.textContent = colorsSelect.options[colorsSelect.selectedIndex].text;
     const setStatus = (message) => { status.textContent = message; };
@@ -116,7 +116,7 @@
       outputCanvas = canvas; quantize();
       dimensions.textContent = `${canvas.width.toLocaleString()} × ${canvas.height.toLocaleString()} px`;
       previewColor.textContent = colorsSelect.options[colorsSelect.selectedIndex].text;
-      updateSizeEstimate();
+      updateSizeDetails();
       download.disabled = false; setStatus(`${selectedPages.length} page(s) stitched.`);
     }
     function formatBytes(bytes) {
@@ -124,15 +124,14 @@
       if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
       return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
-    function updateSizeEstimate() {
+    function updateSizeDetails() {
       const pixelCount = canvas.width * canvas.height;
       const mode = colorsSelect.value;
       const bitsPerPixel = mode === "bw" ? 1 : mode === "gray" ? 8 : mode === "16" ? 4 : 8;
       const rawBytes = pixelCount * bitsPerPixel / 8;
       const base64 = canvas.toDataURL("image/png").split(",")[1] || "";
       const actualBytes = Math.max(0, Math.floor(base64.length * 3 / 4) - (base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0));
-      const estimatedBytes = Math.max(1024, Math.ceil(rawBytes * (mode === "bw" ? .2 : .35) + 512));
-      sizeEstimate.textContent = `Estimated PNG: ${formatBytes(estimatedBytes)} · Current encoded PNG: ${formatBytes(actualBytes)} · ` +
+      sizeDetails.textContent = `Current encoded PNG: ${formatBytes(actualBytes)} · ` +
         `${bitsPerPixel}-bit raw data: ${formatBytes(rawBytes)}`;
     }
     function requestRender() {
