@@ -58,8 +58,11 @@
     const fontFamily = document.querySelector("#fontFamily");
     let outputName = "test.png";
     marked.setOptions({ breaks: true });
+    function getEffectiveScale() {
+      return Math.max(.01, Number(scale.value) / 100) * (compression.value === "compressed" ? .75 : 1);
+    }
     function updatePreviewScale() {
-      const previewScale = Math.max(.01, Number(scale.value) / 100);
+      const previewScale = getEffectiveScale();
       const width = rendered.offsetWidth;
       const height = rendered.offsetHeight;
       previewStage.style.transform = `scale(${previewScale})`;
@@ -88,17 +91,19 @@
       return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
     async function createPng() {
-      const renderScale = Math.max(.01, Number(scale.value) / 100);
       return html2canvas(rendered, {
         backgroundColor: "#ffffff",
-        scale: renderScale * (compression.value === "compressed" ? .75 : 1),
+        scale: getEffectiveScale(),
+        onclone: (clonedDocument) => {
+          clonedDocument.querySelector("#previewStage").style.transform = "none";
+        },
         useCORS: true
       });
     }
     async function updateSizeEstimate() {
-      const exportScale = Math.max(.01, Number(scale.value) / 100) * (compression.value === "compressed" ? .75 : 1);
-      const width = Math.ceil(rendered.offsetWidth * exportScale);
-      const height = Math.ceil(rendered.offsetHeight * exportScale);
+      const exportScale = getEffectiveScale();
+      const width = Math.round(rendered.offsetWidth * exportScale);
+      const height = Math.round(rendered.offsetHeight * exportScale);
       const bitsPerPixel = colors.value === "bw" ? 1 : colors.value === "16" ? 4 : 8;
       const rawBytes = width * height * bitsPerPixel / 8;
       sizeEstimate.textContent = `Estimated PNG: ${formatBytes(Math.max(1024, rawBytes * (compression.value === "compressed" ? .12 : .2)))} · ` +
@@ -108,7 +113,7 @@
     [scale, colors, compression].forEach((control) => control.addEventListener("input", () => {
       scaleValue.textContent = `${scale.value}%`;
       previewColor.textContent = colors.options[colors.selectedIndex].text;
-      if (control === scale) updatePreviewScale();
+      if (control === scale || control === compression) updatePreviewScale();
       updateSizeEstimate();
     }));
     fileInput.addEventListener("change", async () => {
