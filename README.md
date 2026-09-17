@@ -28,6 +28,9 @@ PixelWriter is a local-first browser toolkit for converting ASCII text, selected
 - Converts Markdown files into styled PNG images.
 - Supports headings, lists, links, blockquotes, code blocks, and inline/display LaTeX through KaTeX.
 - Supports searchable system font-family input.
+- Supports proportional font-size scaling for body text and Markdown headings.
+- Supports A4, Letter, or custom page sizes in portrait or landscape orientation.
+- Supports one to four text columns per page.
 - Supports 0-300% render scale.
 - Supports black-and-white, grayscale, 16-color, and 256-color output.
 - Supports lossless and compressed render settings; compressed output uses a reduced render scale before PNG encoding.

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
   <style>
     :root { color-scheme: light; font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #172033; background: #eef3f9; }
-    * { box-sizing: border-box; } body { max-width: 1040px; margin: 0 auto; padding: 48px 22px; }
+    * { box-sizing: border-box; } [hidden] { display:none !important; } body { max-width: 1040px; margin: 0 auto; padding: 48px 22px; }
     .hero { margin-bottom:26px; } .eyebrow { margin:0 0 8px; color:#4763d1; font-size:.78rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
     h1 { margin:0; font-size:clamp(2rem,5vw,3.2rem); letter-spacing:-.045em; line-height:1.05; } .subtitle { max-width:650px; margin:14px 0 0; color:#607089; line-height:1.6; }
     .workspace { display:grid; grid-template-columns:minmax(260px,340px) 1fr; gap:22px; align-items:start; }
@@ -24,7 +24,7 @@
     input[type="range"] { width:100%; accent-color:#4763d1; } .range-line { display:flex; justify-content:space-between; color:#52627a; font-size:.8rem; }
     .canvas-wrap { min-height:420px; overflow:auto; padding:20px; border:1px dashed #c8d4e4; border-radius:12px; background:repeating-conic-gradient(#f2f5f9 0% 25%,#fff 0% 50%) 50%/18px 18px; }
     #previewStage { transform-origin: top left; }
-    #rendered { width:794px; max-width:none; min-height:1123px; padding:56px; background:#fff; color:#172033; box-shadow:0 5px 18px rgba(30,40,60,.14); line-height:1.6; }
+    #rendered { width:794px; height:1123px; max-width:none; padding:56px; overflow:hidden; background:#fff; color:#172033; box-shadow:0 5px 18px rgba(30,40,60,.14); line-height:1.6; column-fill:auto; column-gap:32px; }
     #rendered h1,#rendered h2,#rendered h3 { line-height:1.2; } #rendered pre { padding:14px; overflow:auto; border-radius:8px; background:#f1f4f8; } #rendered code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; }
     #rendered blockquote { margin-left:0; padding-left:16px; border-left:4px solid #b9c6ee; color:#607089; } #rendered img { max-width:100%; }
     @media (max-width:760px) { body{padding:30px 16px}.workspace{grid-template-columns:1fr}.nav-links a{padding:7px 6px} }
@@ -36,7 +36,15 @@
   <div class="workspace">
     <section class="panel" aria-label="Markdown conversion settings">
       <div class="field"><label for="file">Markdown file</label><input id="file" type="file" accept=".md,.markdown,text/markdown,text/plain"></div>
+      <div class="field"><label for="pageSize">Page size</label><select id="pageSize"><option value="a4" selected>A4</option><option value="letter">Letter</option><option value="custom">Custom</option></select></div>
+      <div class="field-row" id="customSizeFields" hidden>
+        <div class="field"><label for="customWidth">Width (px)</label><input id="customWidth" type="number" min="100" max="5000" value="794"></div>
+        <div class="field"><label for="customHeight">Height (px)</label><input id="customHeight" type="number" min="100" max="5000" value="1123"></div>
+      </div>
+      <div class="field"><label for="orientation">Orientation</label><select id="orientation"><option value="portrait" selected>Portrait</option><option value="landscape">Landscape</option></select></div>
+      <div class="field"><label for="columns">Columns per page</label><select id="columns"><option value="1" selected>1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
       <div class="field"><label for="fontFamily">Font family</label><input id="fontFamily" type="search" list="fontSuggestions" value="Arial" placeholder="Search or enter a font name" spellcheck="false"><datalist id="fontSuggestions"><option value="Arial"></option><option value="Inter"></option><option value="Georgia"></option><option value="Courier New"></option><option value="Consolas"></option></datalist></div>
+      <div class="field"><label for="fontSize">Font size scale</label><input id="fontSize" type="range" min="50" max="200" value="100" step="1"><div class="range-line"><span>50%</span><strong id="fontSizeValue">100%</strong><span>200%</span></div></div>
       <div class="field"><label for="scale">Render scale</label><input id="scale" type="range" min="0" max="300" value="150" step="1"><div class="range-line"><span>0%</span><strong id="scaleValue">150%</strong><span>300%</span></div></div>
       <div class="field"><label for="colors">Color mode</label><select id="colors"><option value="bw">Black &amp; white</option><option value="gray" selected>Grayscale</option><option value="16">16 colors</option><option value="256">256 colors</option></select></div>
       <div class="field"><label for="compression">PNG output</label><select id="compression"><option value="lossless" selected>Lossless</option><option value="compressed">Compressed</option></select></div>
@@ -54,6 +62,9 @@
     const fileInput = document.querySelector("#file");
     const rendered = document.querySelector("#rendered"), previewStage = document.querySelector("#previewStage"), download = document.querySelector("#download"), status = document.querySelector("#status");
     const sizeDetails = document.querySelector("#sizeDetails"), previewDimensions = document.querySelector("#previewDimensions"), previewColor = document.querySelector("#previewColor"), compression = document.querySelector("#compression");
+    const pageSize = document.querySelector("#pageSize"), customSizeFields = document.querySelector("#customSizeFields"), customWidth = document.querySelector("#customWidth"), customHeight = document.querySelector("#customHeight");
+    const orientation = document.querySelector("#orientation"), columns = document.querySelector("#columns");
+    const fontSize = document.querySelector("#fontSize"), fontSizeValue = document.querySelector("#fontSizeValue");
     const scale = document.querySelector("#scale"), scaleValue = document.querySelector("#scaleValue"), colors = document.querySelector("#colors");
     const fontFamily = document.querySelector("#fontFamily");
     let outputName = "test.png";
@@ -61,6 +72,24 @@
     marked.setOptions({ breaks: true });
     function getEffectiveScale() {
       return Math.max(.01, Number(scale.value) / 100) * (compression.value === "compressed" ? .75 : 1);
+    }
+    function getPageSize() {
+      const sizes = {
+        a4: [794, 1123],
+        letter: [816, 1056],
+        custom: [Math.max(100, Number(customWidth.value) || 794), Math.max(100, Number(customHeight.value) || 1123)]
+      };
+      const [baseWidth, baseHeight] = sizes[pageSize.value];
+      return orientation.value === "landscape"
+        ? { width: baseHeight, height: baseWidth }
+        : { width: baseWidth, height: baseHeight };
+    }
+    function applyPageLayout() {
+      const { width, height } = getPageSize();
+      rendered.style.width = `${width}px`;
+      rendered.style.height = `${height}px`;
+      rendered.style.columnCount = columns.value;
+      customSizeFields.hidden = pageSize.value !== "custom";
     }
     function updatePreviewScale() {
       const previewScale = getEffectiveScale();
@@ -72,8 +101,9 @@
       previewDimensions.textContent = `${Math.round(width * previewScale).toLocaleString()} × ${Math.round(height * previewScale).toLocaleString()} px`;
     }
     function renderMarkdown() {
+      applyPageLayout();
       rendered.style.fontFamily = `"${fontFamily.value.trim() || "Arial"}", sans-serif`;
-      rendered.style.fontSize = "16px";
+      rendered.style.fontSize = `${16 * Number(fontSize.value) / 100}px`;
       rendered.style.lineHeight = "1.6";
       const markdown = window.markdownSource
         .replace(/\$\$([\s\S]+?)\$\$/g, (_, formula) => `<div class="math-display">${formula}</div>`)
@@ -81,7 +111,7 @@
       rendered.innerHTML = marked.parse(markdown);
       rendered.querySelectorAll(".math-display").forEach((element) => katex.render(element.textContent, element, { displayMode: true, throwOnError: false }));
       rendered.querySelectorAll(".math-inline").forEach((element) => katex.render(element.textContent, element, { throwOnError: false }));
-      status.textContent = `${Math.round(rendered.offsetHeight)} px preview height.`;
+      status.textContent = `${rendered.offsetWidth} × ${rendered.offsetHeight} px page, ${columns.value} column(s).`;
       updatePreviewScale();
       previewColor.textContent = colors.options[colors.selectedIndex].text;
       updateSizeDetails();
@@ -120,6 +150,13 @@
         `${bitsPerPixel}-bit raw data: ${formatBytes(image.width * image.height * bitsPerPixel / 8)}`;
     }
     fontFamily.addEventListener("input", renderMarkdown);
+    [pageSize, orientation, columns, customWidth, customHeight].forEach((control) => {
+      ["input", "change"].forEach((eventName) => control.addEventListener(eventName, renderMarkdown));
+    });
+    fontSize.addEventListener("input", () => {
+      fontSizeValue.textContent = `${fontSize.value}%`;
+      renderMarkdown();
+    });
     [scale, colors, compression].forEach((control) => control.addEventListener("input", () => {
       scaleValue.textContent = `${scale.value}%`;
       previewColor.textContent = colors.options[colors.selectedIndex].text;
